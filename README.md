@@ -11,6 +11,7 @@ This repository contains examples that show you how to use [`container`](https:/
 | --- | --- |
 | [container-machine-vscode](./container-machine-vscode/) | Develop Linux applications in a container machine with Visual Studio Code and its SSH remote development extension. |
 | [container-cluster-gateway](./container-cluster-gateway/) | Run a three-tier web app on a local Kubernetes cluster with `container cluster`, and reach it from your browser through a gateway container. |
+| [container-workflows-lab](./container-workflows-lab/) | Take a Swift server app with Postgres through three workflows: verify it on Linux with `container machine`, build and run an image with `container`, and deploy it locally with `container cluster`. |
 
 Each example has its own README with prerequisites and step-by-step instructions.
 
