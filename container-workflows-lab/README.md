@@ -16,7 +16,7 @@ In this lab you take a Swift server app (HTTP API + Postgres) through the three 
 | Requirement | Version | Get it |
 |---|---|---|
 | Apple silicon Mac running **macOS 26** | macOS 26 | |
-| [Apple Container](https://github.com/apple/container) | **1.5.0** | [Releases](https://github.com/apple/container/releases) |
+| [Apple Container](https://github.com/apple/container) | **1.6.1 or later** | [Releases](https://github.com/apple/container/releases) |
 | Swift toolchain on macOS | **6.3 or newer** | [Xcode](https://developer.apple.com/xcode/) or [swift.org](https://www.swift.org/install/macos/) |
 | `kubectl` | any recent version | [Install guide](https://kubernetes.io/docs/tasks/tools/) (or `brew install kubectl`) |
 
@@ -47,7 +47,7 @@ Run these and confirm the expected result for each:
 sw_vers -productVersion        # 26 or later
 uname -m                       # arm64
 swift --version                # Swift version 6.3 or newer
-container --version            # container CLI version 1.5.0
+container --version            # container CLI version 1.6.1 or later
 container system status        # running
 kubectl version --client       # prints a client version
 lsof -i :8080                  # prints nothing (port is free)
