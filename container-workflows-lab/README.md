@@ -18,7 +18,7 @@ In this lab you take a Swift server app (HTTP API + Postgres) through these Appl
 | Apple silicon Mac running **macOS 26** | macOS 26 | |
 | [Apple Container](https://github.com/apple/container) | **1.6.1 or later** | [Releases](https://github.com/apple/container/releases) |
 | Swift toolchain on macOS | **6.3 or newer** | [Xcode](https://developer.apple.com/xcode/) or [swift.org](https://www.swift.org/install/macos/) |
-| `kubectl` | any recent version | [Install guide](https://kubernetes.io/docs/tasks/tools/) (or `brew install kubectl`) |
+| `kubectl` | **1.37 or newer** | [Install guide](https://kubernetes.io/docs/tasks/tools/) (or `brew install kubectl`) |
 
 - The container system service running:
   ```bash
@@ -270,6 +270,8 @@ container run -d --name todos-app -p 8080:8080 \
 - `-d` runs the container in the background.
 - `-p 8080:8080` publishes the app's port to your Mac as `localhost:8080`.
 - `POSTGRES_URL` tells the app where its database is. The app reaches Postgres directly over the container network.
+
+> **Tip:** Instead of looking up the database IP, you can use `container system dns` to create a local DNS domain (for example, `sudo container system dns create test`).
 
 Check that it's up, then call the API from your Mac:
 
