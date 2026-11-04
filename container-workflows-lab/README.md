@@ -1,6 +1,6 @@
-# Apple Container Workshop Lab
+# Container Workflows Lab
 
-In this lab you take a Swift server app (HTTP API + Postgres) through the three main Apple Container workflows:
+In this lab you take a Swift server app (HTTP API + Postgres) through these Apple Container workflows:
 
 | Stage | Tool | What it shows |
 |---|---|---|
@@ -235,8 +235,6 @@ container image list | grep todos
 ```
 
 This will take some time. 
-
-> Take a look at the Dockerfile. Good time to provide more background on Container / Containerization / Virtualization.
 
 ### 3.2 Run the app as a container
 
