@@ -99,7 +99,7 @@ app.traceAutoPropagation = true
 
 ## Build it
 
-From the repo root:
+From the `container-workflows-lab` directory:
 
 `[macOS]`
 ```bash
@@ -122,10 +122,11 @@ swift build
 
 The machine image is the official `swift:6.3-noble` image (the same toolchain as the app's own `Dockerfile`) plus `systemd`, which makes it bootable as a machine.
 
-From the repo root:
+Go back up to `container-workflows-lab`:
 
 `[macOS]`
 ```bash
+cd ..
 container build -f machine/swift-dev.Dockerfile -t swift-dev:lab machine/
 ```
 
@@ -141,7 +142,7 @@ container machine create swift-dev:lab --name swift-dev
 container machine list
 ```
 
-From the repo root, open a shell in the machine and look around.
+Open a shell in the machine and look around. The shell starts in the same directory as your Mac shell (`container-workflows-lab`).
 
 Should say Linux instead of Darwin
 ```bash
@@ -225,7 +226,14 @@ swift build --scratch-path ~/.cache/todos-build
 
 The app ships with a multi-stage `Dockerfile`: a `swift:6.3-noble` builder stage compiles the app on Linux, and a slim `swift:6.3-noble-slim` runtime stage runs it. Because you fixed the Linux build in Part 2, this now succeeds.
 
-From the repo root:
+Exit the machine shell to return to your Mac shell, which is still in `container-workflows-lab`:
+
+`[swift-dev]`
+```bash
+exit
+```
+
+Then build the image:
 
 `[macOS]`
 ```bash
@@ -320,10 +328,11 @@ container cluster load-image --name todos-cluster todos:lab
 
 ### 4.3 Review the manifests
 
-From the repo root:
+Go back up to `container-workflows-lab`:
 
 `[macOS]`
 ```bash
+cd ..
 cat cluster/todos-cluster.yaml
 ```
 
@@ -344,8 +353,6 @@ Things to notice:
 - The app finds the database through `POSTGRES_URL=postgres://postgres@postgres:5432/...`, where `postgres` is the Service name.
 
 ### 4.4 Deploy
-
-From the repo root:
 
 `[cluster]`
 ```bash
@@ -424,7 +431,7 @@ kubectl rollout status deployment todos
 
 ## Part 6 — Teardown
 
-Stop the port-forward, then, from the repo root:
+Stop the port-forward (Ctrl+C in the second terminal), then, back in your first terminal (still in `container-workflows-lab`):
 
 `[cluster]`
 ```bash
