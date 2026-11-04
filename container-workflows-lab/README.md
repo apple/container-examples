@@ -25,7 +25,6 @@ In this lab you take a Swift server app (HTTP API + Postgres) through these Appl
   container system start
   container system status
   ```
-- ~10 GB free disk and a decent network connection (the Swift image is large).
 - Host port `8080` free (used in Parts 3 and 4).
 
 ### Pre-pull the images (recommended)
@@ -444,5 +443,6 @@ kubectl delete -f cluster/todos-cluster.yaml
 ```bash
 container cluster delete --name todos-cluster
 container machine delete swift-dev
-container image delete todos:lab swift-dev:lab postgres:17-alpine
+container image delete todos:lab swift-dev:lab
+container image delete swift:6.3-noble swift:6.3-noble-slim postgres:17-alpine
 ```
