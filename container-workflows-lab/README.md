@@ -238,7 +238,7 @@ Then build the image:
 ```bash
 cd todos-app
 container build -t todos:lab .
-container image list | grep todos
+container image list
 ```
 
 This will take some time. 
@@ -263,12 +263,14 @@ Now start the app and point it at the database. Replace `<DB-IP>` with the addre
 ```bash
 container run -d --name todos-app -p 8080:8080 \
   -e POSTGRES_URL="postgres://postgres@<DB-IP>:5432/postgres?sslmode=disable" \
+  -e OTEL_LOGS_EXPORTER=none -e OTEL_METRICS_EXPORTER=none -e OTEL_TRACES_EXPORTER=none \
   todos:lab
 ```
 
 - `-d` runs the container in the background.
 - `-p 8080:8080` publishes the app's port to your Mac as `localhost:8080`.
 - `POSTGRES_URL` tells the app where its database is. The app reaches Postgres directly over the container network.
+- The `OTEL_*_EXPORTER=none` variables turn off OpenTelemetry export. There's no OTel collector in this lab, so without them the logs fill up with `Failed to export` warnings.
 
 > **Tip:** Instead of looking up the database IP, you can use `container system dns` to create a local DNS domain (for example, `sudo container system dns create test`).
 
@@ -326,7 +328,7 @@ Confirm both images are in your local store:
 
 `[macOS]`
 ```bash
-container image list | grep -E 'todos|postgres'
+container image list
 ```
 
 **Expected:** `todos` with tag `lab`, and `postgres` with tag `17-alpine`.
