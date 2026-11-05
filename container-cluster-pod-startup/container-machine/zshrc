@@ -1,0 +1,9 @@
+# The sample-app container machine's interactive zsh rc (ZDOTDIR=/etc/zsh/container-machine).
+# The prompt names the container machine, so it is never mistaken for the Mac.
+PROMPT='%m %~ %# '
+HISTFILE=${XDG_STATE_HOME:-$HOME/.local/state}/zsh/container-machine-history
+mkdir -p ${HISTFILE:h}
+HISTSIZE=10000
+SAVEHIST=10000
+setopt no_beep interactive_comments share_history
+bindkey -e

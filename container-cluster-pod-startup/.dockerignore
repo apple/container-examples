@@ -1,0 +1,9 @@
+# Build context exclusions for the Containerfile; container build reads .dockerignore.
+bin/
+docs/
+cluster/
+container-machine/
+config/
+*.md
+.jj/
+.git/

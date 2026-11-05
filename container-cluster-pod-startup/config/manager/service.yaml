@@ -1,0 +1,17 @@
+# type LoadBalancer: Cilium LB IPAM gives it an address from the cluster's
+# CiliumLoadBalancerIPPool, and an L2 announcement on enp0s1 makes that address reachable
+# from the Mac.
+apiVersion: v1
+kind: Service
+metadata:
+  name: sample-app
+  labels:
+    app.kubernetes.io/name: sample-app
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: sample-app
+  ports:
+  - name: http
+    port: 80
+    targetPort: http

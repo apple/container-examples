@@ -1,0 +1,18 @@
+# One LoadBalancer address, for the one Service the example opens.
+# The default network is pinned to 192.168.70.0/24 in ~/.config/container/config.toml
+# (README.md, Before you start); keep the two in step.
+#
+# The container network gives each container an address from .2 to .253 of the /24.
+# It hands them out in order and puts released ones at the end of the queue, so every
+# address in that range can be in use.
+# DHCP is off on this network.
+# .0 is the network, .1 is the gateway on the Mac, .255 is broadcast.
+# That leaves .254 as the only on-link address that no container can get.
+apiVersion: cilium.io/v2
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: default-network
+spec:
+  blocks:
+    - start: "192.168.70.254"
+      stop: "192.168.70.254"
