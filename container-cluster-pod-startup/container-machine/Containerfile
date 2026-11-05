@@ -1,0 +1,56 @@
+# A container machine for building and testing sample-app in Linux: Debian 13 with systemd
+# as PID 1, Go, make, git and zsh.
+#
+# Build it and create the container machine (on the Mac, from the example's directory).
+# container build finds this Containerfile in container-machine on its own; it would pick
+# a Dockerfile first if one were there. The prompt shows the container machine's
+# name, dev.
+#
+#	container build -t sample-app-container-machine:dev container-machine
+#	container machine create sample-app-container-machine:dev --name dev
+#	container machine set -n dev cpus=8 memory=16G
+#	container machine stop dev        # the new size applies at the next boot
+#	container machine run -n dev      # boots it; a shell in the same directory
+#
+# Go in the container machine keeps its settings in ~/.config/go/env, a file the Mac's Go
+# never reads, so a module proxy set on the Mac does not apply there.
+# Go's default, https://proxy.golang.org, needs no setting.
+# To use another proxy, set it once inside the container machine:
+#
+#	go env -w GOPROXY=<proxy URL>,direct
+#
+# container machine replaces /sbin/init with its own script, which creates your user
+# (same name, UID and GID as on the Mac), mounts your Mac $HOME at the same path, and then
+# execs this image's /sbin/init: systemd.
+# The user's shell is DSHELL from /etc/adduser.conf: zsh.
+# /etc/machine/create-user.sh (the path container machine looks for) replaces the built-in
+# user setup, which copies /etc/skel into $HOME and runs chown -R on it: with the Mac's
+# $HOME mounted, that would overwrite ~/.bashrc and ~/.profile on the Mac and walk the
+# whole home directory.
+ARG GO_VERSION=1.27.2
+FROM golang:${GO_VERSION} AS go
+
+FROM debian:trixie
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends \
+		systemd systemd-sysv dbus \
+		ca-certificates curl git make gcc libc6-dev \
+		zsh sudo less procps iproute2 \
+	&& rm -rf /var/lib/apt/lists/*
+
+COPY --from=go /usr/local/go /usr/local/go
+ENV PATH=/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+COPY create-user.sh /etc/machine/create-user.sh
+COPY zshenv /etc/zsh/zshenv
+COPY zshrc /etc/zsh/container-machine/.zshrc
+RUN chmod 0755 /etc/machine/create-user.sh \
+	&& echo 'DSHELL=/bin/zsh' >> /etc/adduser.conf \
+	&& rm -rf /etc/skel && mkdir /etc/skel \
+	&& systemctl set-default multi-user.target \
+	&& systemctl mask systemd-firstboot.service console-getty.service getty@tty1.service \
+	&& go version
+
+STOPSIGNAL SIGRTMIN+3
+CMD ["/sbin/init"]

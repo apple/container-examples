@@ -1,0 +1,33 @@
+# Open the app's HTTP port to LoadBalancer traffic from the Mac, and to nothing else new.
+# default-deny (config/manager) is a Kubernetes NetworkPolicy, and this is a Cilium one.
+# Cilium enforces both kinds at once, and allow rules add up to their union.
+# default-deny allows nothing, so the app's pods take exactly this rule, for ingress only.
+# There is no egress section, so egress stays open and the app still reaches Postgres.
+#
+# The example cluster runs Cilium 1.20.1 with kube-proxy replacement in its default SNAT mode.
+# One node, the L2 announcement leader, answers ARP for the address and takes the traffic.
+# When the app's pod runs on that node, the packet keeps the Mac's address: entity world.
+# When it runs on another node, the leader SNATs to its own node IP: entity remote-node.
+# Both entities are listed, so the page loads wherever the pod and the leader land.
+# externalTrafficPolicy: Local would keep the source, but L2 announcements do not support it.
+#
+# toPorts names the pod's port, 8080, not the Service's port 80.
+# Cilium matches ports after the service port mapping.
+# Kubelet probes come from the local host, which Cilium allows by default.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-lb
+  namespace: sample-controller
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: sample-app
+  ingress:
+  - fromEntities:
+    - world
+    - remote-node
+    toPorts:
+    - ports:
+      - port: "8080"
+        protocol: TCP

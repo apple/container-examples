@@ -1,0 +1,13 @@
+# Announce LoadBalancer IPs by ARP on enp0s1, from one node at a time (a Lease per Service).
+# The node NIC is enp0s1, not eth0 (ip -br link in each node).
+# The interface must also be in Cilium's `devices` (cilium-values.yaml).
+# No selectors: every Service and every node is a candidate.
+apiVersion: cilium.io/v2alpha1
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: default-network
+spec:
+  interfaces:
+    - ^enp0s1$
+  loadBalancerIPs: true
+  externalIPs: false

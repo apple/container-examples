@@ -1,0 +1,48 @@
+# Cilium 1.20.1 values for a `container cluster` cluster, nodes on the default network.
+# Render, from the example's directory (the one with the Makefile):
+#   helm template cilium cilium/cilium --version 1.20.1 -n kube-system \
+#     -f cluster/cilium-values.yaml > cluster/cilium.yaml
+# cluster/README.md says why each setting is here.
+
+# The cluster's kubeadm sets podSubnet 10.244.0.0/16.
+# Kubernetes IPAM uses the per-node podCIDRs kubeadm hands out.
+ipam:
+  mode: kubernetes
+
+# Every node is on one L2 segment, the default network, so pods route natively with no
+# tunnel.
+routingMode: native
+ipv4NativeRoutingCIDR: 10.244.0.0/16
+autoDirectNodeRoutes: true
+
+# The nodes attach to the default network at MTU 1280.
+MTU: 1280
+
+# L2 announcements need kube-proxy replacement (Cilium docs: L2 Announcements).
+# The cluster still installs kube-proxy, and this setup keeps it.
+# Both can run on a new cluster that serves no traffic yet (Cilium docs: kube-proxy free).
+# k8sServiceHost is not set on purpose.
+# The control-plane IP is known only after create, and the agent then reaches
+# the API server at the kubernetes Service, which kube-proxy serves.
+kubeProxyReplacement: true
+
+bpf:
+  masquerade: true
+
+# The agent answers ARP for LoadBalancer IPs on the devices listed here.
+# The node NIC is enp0s1, not eth0 (ip -br link in each node).
+devices: enp0s1
+l2announcements:
+  enabled: true
+
+# Leases for L2 announcements exceed the default 5 QPS.
+k8sClientRateLimit:
+  qps: 50
+  burst: 100
+
+operator:
+  replicas: 1
+
+# Without this the agent exits: "unable to determine direct routing device. Use --direct-routing-device to specify it".
+extraConfig:
+  direct-routing-device: enp0s1
