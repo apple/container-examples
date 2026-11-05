@@ -16,7 +16,7 @@ In this lab you take a Swift server app (HTTP API + Postgres) through these Appl
 | Requirement | Version | Get it |
 |---|---|---|
 | Apple silicon Mac running **macOS 26** | macOS 26 | |
-| [Apple Container](https://github.com/apple/container) | **1.6.1 or later** | [Releases](https://github.com/apple/container/releases) |
+| [Apple Container](https://github.com/apple/container) | **1.7.0 or newer** | [Build from source](https://github.com/apple/container) |
 | Swift toolchain on macOS | **6.3 or newer** | [Xcode](https://developer.apple.com/xcode/) or [swift.org](https://www.swift.org/install/macos/) |
 | `kubectl` | **1.37 or newer** | [Install guide](https://kubernetes.io/docs/tasks/tools/) (or `brew install kubectl`) |
 
@@ -46,7 +46,7 @@ Run these and confirm the expected result for each:
 sw_vers -productVersion        # 26 or later
 uname -m                       # arm64
 swift --version                # Swift version 6.3 or newer
-container --version            # container CLI version 1.6.1 or later
+container --version            # container CLI version 1.7.0 or later
 container system status        # running
 kubectl version --client       # prints a client version
 lsof -i :8080                  # prints nothing (port is free)
@@ -301,11 +301,13 @@ container delete todos-app todos-db
 
 ### 4.1 Create the cluster
 
-Downloading the Kubernetes node image (kindest/node 343 MB) the first time, then starting the cluster. This command creates a single node Kubernetes cluster.
+This command creates a single node Kubernetes cluster.
+
+`--shared-image-store` lets the cluster's node read images straight from your local image store (the one `container image list` shows). 
 
 `[macOS]`
 ```bash
-container cluster create --name todos-cluster
+container cluster create --name todos-cluster --shared-image-store
 container cluster list
 ```
 
@@ -316,16 +318,18 @@ kubectl get nodes
 
 **Expected:** one node in `Ready` state.
 
-### 4.2 Load images into the cluster
+### 4.2 Check the images the cluster will use
 
-The cluster can't see your local image store, so load the images explicitly. `todos:lab` was never pushed to a registry.
+You don't need to load anything into the cluster or push `todos:lab` to a registry. When the node needs an image, it looks in your local image store first. If the image isn't there (or has no `linux/arm64` version), the node pulls it from the registry as usual.
+
+Confirm both images are in your local store:
 
 `[macOS]`
 ```bash
-container image pull --platform linux/arm64 postgres:17-alpine
-container cluster load-image --name todos-cluster postgres:17-alpine
-container cluster load-image --name todos-cluster todos:lab
+container image list | grep -E 'todos|postgres'
 ```
+
+**Expected:** `todos` with tag `lab`, and `postgres` with tag `17-alpine`.
 
 ### 4.3 Review the manifests
 
@@ -344,13 +348,14 @@ What's in it:
 | `PersistentVolume` / `PersistentVolumeClaim` `postgres-data` | 1 Gi `hostPath` volume on the node so data survives pod restarts |
 | `Deployment` `postgres` | Postgres 17 (Alpine), `Recreate` strategy (never two pods on one volume), `pg_isready` readiness probe |
 | `Service` `postgres` | Cluster DNS name `postgres:5432` for the app |
-| `Deployment` `todos` | The `todos:lab` image with `imagePullPolicy: Never` (use the loaded image, never a registry) and a `/health` readiness probe |
+| `Deployment` `todos` | The `todos:lab` image with `imagePullPolicy: Never` (use the image from your local store, never a registry) and a `/health` readiness probe |
 | `Service` `todos` | Port 80 → container port 8080 |
 
 Things to notice:
 
 - `PGDATA=/var/lib/postgresql/data/pgdata` puts the data directory in a subfolder of the mount. Postgres refuses to initialize directly in a mount point's root.
 - `POSTGRES_HOST_AUTH_METHOD=trust` is for this local lab only. Never use it in a real deployment.
+- The manifests use full names like `docker.io/library/todos:lab`. That is the same image as `todos:lab` in `container image list`, because `container` adds `docker.io/library/` to short names.
 - The app finds the database through `POSTGRES_URL=postgres://postgres@postgres:5432/...`, where `postgres` is the Service name.
 
 ### 4.4 Deploy

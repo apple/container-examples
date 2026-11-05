@@ -94,12 +94,20 @@ spec:
       containers:
         - name: todos
           image: docker.io/library/todos:lab
-          imagePullPolicy: Never               # use the loaded image, never a registry
+          imagePullPolicy: Never               # use the image from the local store (--shared-image-store), never a registry
           ports:
             - containerPort: 8080
           env:
             - name: POSTGRES_URL
               value: "postgres://postgres@postgres:5432/postgres?sslmode=disable"
+            # No OTel collector in this lab, so turn off export (stops "Failed to export" warnings).
+            # OTEL_SDK_DISABLED won't work here: the OTel.make*Backend calls in Telemetry.swift throw when it's set.
+            - name: OTEL_LOGS_EXPORTER
+              value: "none"
+            - name: OTEL_METRICS_EXPORTER
+              value: "none"
+            - name: OTEL_TRACES_EXPORTER
+              value: "none"
           readinessProbe:
             httpGet:
               path: /health
