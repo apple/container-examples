@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: valkey
-          image: valkey/valkey:8
+          image: docker.io/valkey/valkey:8
           ports:
             - containerPort: 6379
 ---
