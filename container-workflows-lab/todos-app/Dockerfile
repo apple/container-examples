@@ -1,11 +1,6 @@
 # User with a builder image.
 FROM swift:6.3-noble AS builder
 
-# Install OS updates.
-RUN export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
-    && apt-get -q update \
-    && apt-get -q dist-upgrade -y
-
 # Set up an area for the code and the build.
 WORKDIR /code
 
@@ -28,12 +23,7 @@ RUN swift build -c release \
 # Switch over to a lighter-weight runtime image.
 FROM swift:6.3-noble-slim
 
-# Install OS updates.
-RUN export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
-    && apt-get -q update \
-    && apt-get -q dist-upgrade -y \
-    && apt-get -q install -y ca-certificates tzdata \
-    && rm -r /var/lib/apt/lists/*
+# The slim image already includes ca-certificates and tzdata, so no apt step is needed.
 
 # Create a directory for the server binary and resources.
 RUN mkdir -p /app/bin

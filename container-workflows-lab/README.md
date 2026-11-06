@@ -1,6 +1,6 @@
-# Apple Container Workshop Lab
+# Container Workflows Lab
 
-In this lab you take a Swift server app (HTTP API + Postgres) through the three main Apple Container workflows:
+In this lab you take a Swift server app (HTTP API + Postgres) through these Apple Container workflows:
 
 | Stage | Tool | What it shows |
 |---|---|---|
@@ -16,16 +16,15 @@ In this lab you take a Swift server app (HTTP API + Postgres) through the three 
 | Requirement | Version | Get it |
 |---|---|---|
 | Apple silicon Mac running **macOS 26** | macOS 26 | |
-| [Apple Container](https://github.com/apple/container) | **1.6.1 or later** | [Releases](https://github.com/apple/container/releases) |
+| [Apple Container](https://github.com/apple/container) | **1.7.0 or newer** | [Build from source](https://github.com/apple/container) |
 | Swift toolchain on macOS | **6.3 or newer** | [Xcode](https://developer.apple.com/xcode/) or [swift.org](https://www.swift.org/install/macos/) |
-| `kubectl` | any recent version | [Install guide](https://kubernetes.io/docs/tasks/tools/) (or `brew install kubectl`) |
+| `kubectl` | **1.37 or newer** | [Install guide](https://kubernetes.io/docs/tasks/tools/) (or `brew install kubectl`) |
 
 - The container system service running:
   ```bash
   container system start
   container system status
   ```
-- ~10 GB free disk and a decent network connection (the Swift image is large).
 - Host port `8080` free (used in Parts 3 and 4).
 
 ### Pre-pull the images (recommended)
@@ -47,7 +46,7 @@ Run these and confirm the expected result for each:
 sw_vers -productVersion        # 26 or later
 uname -m                       # arm64
 swift --version                # Swift version 6.3 or newer
-container --version            # container CLI version 1.6.1 or later
+container --version            # container CLI version 1.7.0 or later
 container system status        # running
 kubectl version --client       # prints a client version
 lsof -i :8080                  # prints nothing (port is free)
@@ -99,7 +98,7 @@ app.traceAutoPropagation = true
 
 ## Build it
 
-From the repo root:
+From the `container-workflows-lab` directory:
 
 `[macOS]`
 ```bash
@@ -122,10 +121,11 @@ swift build
 
 The machine image is the official `swift:6.3-noble` image (the same toolchain as the app's own `Dockerfile`) plus `systemd`, which makes it bootable as a machine.
 
-From the repo root:
+Go back up to `container-workflows-lab`:
 
 `[macOS]`
 ```bash
+cd ..
 container build -f machine/swift-dev.Dockerfile -t swift-dev:lab machine/
 ```
 
@@ -141,7 +141,7 @@ container machine create swift-dev:lab --name swift-dev
 container machine list
 ```
 
-From the repo root, open a shell in the machine and look around.
+Open a shell in the machine and look around. The shell starts in the same directory as your Mac shell (`container-workflows-lab`).
 
 Should say Linux instead of Darwin
 ```bash
@@ -225,18 +225,23 @@ swift build --scratch-path ~/.cache/todos-build
 
 The app ships with a multi-stage `Dockerfile`: a `swift:6.3-noble` builder stage compiles the app on Linux, and a slim `swift:6.3-noble-slim` runtime stage runs it. Because you fixed the Linux build in Part 2, this now succeeds.
 
-From the repo root:
+Exit the machine shell to return to your Mac shell, which is still in `container-workflows-lab`:
+
+`[swift-dev]`
+```bash
+exit
+```
+
+Then build the image:
 
 `[macOS]`
 ```bash
 cd todos-app
 container build -t todos:lab .
-container image list | grep todos
+container image list
 ```
 
 This will take some time. 
-
-> Take a look at the Dockerfile. Good time to provide more background on Container / Containerization / Virtualization.
 
 ### 3.2 Run the app as a container
 
@@ -258,12 +263,16 @@ Now start the app and point it at the database. Replace `<DB-IP>` with the addre
 ```bash
 container run -d --name todos-app -p 8080:8080 \
   -e POSTGRES_URL="postgres://postgres@<DB-IP>:5432/postgres?sslmode=disable" \
+  -e OTEL_LOGS_EXPORTER=none -e OTEL_METRICS_EXPORTER=none -e OTEL_TRACES_EXPORTER=none \
   todos:lab
 ```
 
 - `-d` runs the container in the background.
 - `-p 8080:8080` publishes the app's port to your Mac as `localhost:8080`.
 - `POSTGRES_URL` tells the app where its database is. The app reaches Postgres directly over the container network.
+- The `OTEL_*_EXPORTER=none` variables turn off OpenTelemetry export. There's no OTel collector in this lab, so without them the logs fill up with `Failed to export` warnings.
+
+> **Tip:** Instead of looking up the database IP, you can use `container system dns` to create a local DNS domain (for example, `sudo container system dns create test`).
 
 Check that it's up, then call the API from your Mac:
 
@@ -294,11 +303,13 @@ container delete todos-app todos-db
 
 ### 4.1 Create the cluster
 
-Downloading the Kubernetes node image (kindest/node 343 MB) the first time, then starting the cluster. This command creates a single node Kubernetes cluster.
+This command creates a single node Kubernetes cluster.
+
+`--shared-image-store` lets the cluster's node read images straight from your local image store (the one `container image list` shows). 
 
 `[macOS]`
 ```bash
-container cluster create --name todos-cluster
+container cluster create --name todos-cluster --shared-image-store
 container cluster list
 ```
 
@@ -309,23 +320,26 @@ kubectl get nodes
 
 **Expected:** one node in `Ready` state.
 
-### 4.2 Load images into the cluster
+### 4.2 Check the images the cluster will use
 
-The cluster can't see your local image store, so load the images explicitly. `todos:lab` was never pushed to a registry.
+You don't need to load anything into the cluster or push `todos:lab` to a registry. When the node needs an image, it looks in your local image store first. If the image isn't there (or has no `linux/arm64` version), the node pulls it from the registry as usual.
+
+Confirm both images are in your local store:
 
 `[macOS]`
 ```bash
-container image pull --platform linux/arm64 postgres:17-alpine
-container cluster load-image --name todos-cluster postgres:17-alpine
-container cluster load-image --name todos-cluster todos:lab
+container image list
 ```
+
+**Expected:** `todos` with tag `lab`, and `postgres` with tag `17-alpine`.
 
 ### 4.3 Review the manifests
 
-From the repo root:
+Go back up to `container-workflows-lab`:
 
 `[macOS]`
 ```bash
+cd ..
 cat cluster/todos-cluster.yaml
 ```
 
@@ -336,18 +350,17 @@ What's in it:
 | `PersistentVolume` / `PersistentVolumeClaim` `postgres-data` | 1 Gi `hostPath` volume on the node so data survives pod restarts |
 | `Deployment` `postgres` | Postgres 17 (Alpine), `Recreate` strategy (never two pods on one volume), `pg_isready` readiness probe |
 | `Service` `postgres` | Cluster DNS name `postgres:5432` for the app |
-| `Deployment` `todos` | The `todos:lab` image with `imagePullPolicy: Never` (use the loaded image, never a registry) and a `/health` readiness probe |
+| `Deployment` `todos` | The `todos:lab` image with `imagePullPolicy: Never` (use the image from your local store, never a registry) and a `/health` readiness probe |
 | `Service` `todos` | Port 80 → container port 8080 |
 
 Things to notice:
 
 - `PGDATA=/var/lib/postgresql/data/pgdata` puts the data directory in a subfolder of the mount. Postgres refuses to initialize directly in a mount point's root.
 - `POSTGRES_HOST_AUTH_METHOD=trust` is for this local lab only. Never use it in a real deployment.
+- The manifests use full names like `docker.io/library/todos:lab`. That is the same image as `todos:lab` in `container image list`, because `container` adds `docker.io/library/` to short names.
 - The app finds the database through `POSTGRES_URL=postgres://postgres@postgres:5432/...`, where `postgres` is the Service name.
 
 ### 4.4 Deploy
-
-From the repo root:
 
 `[cluster]`
 ```bash
@@ -426,7 +439,7 @@ kubectl rollout status deployment todos
 
 ## Part 6 — Teardown
 
-Stop the port-forward, then, from the repo root:
+Stop the port-forward (Ctrl+C in the second terminal), then, back in your first terminal (still in `container-workflows-lab`):
 
 `[cluster]`
 ```bash
@@ -437,5 +450,6 @@ kubectl delete -f cluster/todos-cluster.yaml
 ```bash
 container cluster delete --name todos-cluster
 container machine delete swift-dev
-container image delete todos:lab swift-dev:lab postgres:17-alpine
+container image delete todos:lab swift-dev:lab
+container image delete swift:6.3-noble swift:6.3-noble-slim postgres:17-alpine
 ```
