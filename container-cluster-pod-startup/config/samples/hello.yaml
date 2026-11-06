@@ -1,0 +1,28 @@
+# The workload to scale: the pause image does nothing and starts in a moment, and with it
+# already on the nodes, scaling to ten pulls nothing.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello
+  namespace: default
+  labels:
+    app: hello
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello
+  template:
+    metadata:
+      labels:
+        app: hello
+    spec:
+      terminationGracePeriodSeconds: 0
+      containers:
+      - name: hello
+        image: registry.k8s.io/pause:3.10.1
+        imagePullPolicy: IfNotPresent
+        resources:
+          requests:
+            cpu: 5m
+            memory: 8Mi

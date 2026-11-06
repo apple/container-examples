@@ -1,0 +1,14 @@
+# Default-deny ingress for the app's pods: kubectl apply -k config/default creates it with
+# the app, so the LoadBalancer address does not answer until config/policy/allow-lb.yaml
+# opens the HTTP port.
+# It denies ingress only: the app still reaches Postgres, and egress is not restricted.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: sample-app
+  policyTypes:
+  - Ingress

@@ -1,0 +1,72 @@
+/* A dark dashboard. Everything is in rem, and the root size follows the window, so the
+   page keeps its proportions from a laptop to a projector. */
+:root {
+  --orange: #FF9F0A; --green: #30D158; --red: #FF453A; --grey: #8E8E93;
+  --primary: #F5F5F7; --secondary: rgba(235, 235, 245, .6); --tertiary: rgba(235, 235, 245, .3);
+  --bg: #111113; --card: #1A1A1D; --line: #2A2A2E; --raised: #2C2C30;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { font-size: max(12px, min(1.45vw, 3.3vh)); }
+html, body { margin: 0; height: 100%; background: var(--bg); }
+body {
+  font-family: system-ui, -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif;
+  color: var(--primary); -webkit-font-smoothing: antialiased; font-synthesis: none;
+  padding: 1rem 1.2rem 1.2rem; display: flex; flex-direction: column; gap: .85rem;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+
+.top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.title { display: flex; align-items: center; gap: .55rem; min-width: 0; white-space: nowrap; }
+.logo { width: 1.7rem; height: 1.7rem; flex: none; margin-right: .2rem; }
+.brand { font-size: 1.3rem; font-weight: 600; }
+.sep { font-size: 1.3rem; color: var(--tertiary); }
+.brand:empty, .brand:empty + .sep { display: none; }
+h1 { margin: 0; font-size: 1.3rem; font-weight: 400; color: var(--secondary); }
+.controls { display: flex; align-items: center; gap: .6rem; white-space: nowrap; }
+.updated { font-size: 1rem; color: var(--secondary); margin-right: .1rem; }
+.seg { display: flex; padding: .15rem; border: 1px solid var(--line); border-radius: .4rem; background: var(--card); }
+.seg button { font-size: 1.05rem; padding: .25rem .75rem; border-radius: .28rem; color: var(--secondary); }
+.seg button.on { background: var(--raised); color: var(--primary); font-weight: 500; }
+.live { display: flex; align-items: center; gap: .55rem; margin-left: 1.5rem; padding: .4rem .8rem; font-size: 1.05rem;
+  border: 1px solid var(--line); border-radius: .4rem; background: var(--card); }
+.spin { width: 1rem; height: 1rem; border-radius: 50%; border: 2px solid var(--raised); border-top-color: var(--green); }
+.live.on .spin { animation: spin 1.2s linear infinite; }
+.live:not(.on) .spin { border-top-color: var(--grey); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+main { flex: 1; display: flex; flex-direction: column; gap: .85rem; min-height: 0; }
+.label { font-size: 1rem; font-weight: 600; color: rgba(235, 235, 245, .82); white-space: nowrap; }
+.cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .85rem; }
+.card, .panel { background: var(--card); border: 1px solid var(--line); border-radius: .45rem; }
+.card { padding: .95rem .9rem .75rem; display: flex; flex-direction: column; gap: .35rem; min-width: 0; }
+.value { display: flex; align-items: baseline; gap: .3rem; white-space: nowrap; }
+.num { font-size: 3.1rem; line-height: 1.15; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.unit { font-size: 1.5rem; font-weight: 500; color: var(--secondary); }
+.sub { margin-left: auto; font-size: 1.05rem; color: var(--secondary); }
+.card.empty .unit { display: none; }
+.db-dot { width: 1.1rem; height: 1.1rem; border-radius: 50%; margin-right: .4rem; flex: none; align-self: center; background: var(--grey); }
+.db-dot.up { background: var(--green); }
+.db-dot.down { background: var(--red); }
+.db { font-size: 2.3rem; line-height: 1.55; font-weight: 600; letter-spacing: -.01em; }
+.db.down { color: var(--secondary); }
+
+.panel { flex: 1; min-height: 0; padding: .95rem .9rem .9rem; display: flex; flex-direction: column; gap: .5rem; }
+.panel-body { flex: 1; min-height: 12.5rem; display: flex; gap: 2rem; align-items: stretch; }
+.chart { flex: 1; min-width: 0; }
+.chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.chart text { font-size: 1rem; fill: var(--secondary); }
+/* The side column is as wide as its table, at least 21.5rem and at most half the panel, so
+   longer times or a third percentile widen it. A table wider than half the panel scrolls
+   inside the column instead of spilling out of the panel. */
+.side { flex: none; min-width: 21.5rem; max-width: 50%; overflow-x: auto; display: flex; flex-direction: column; padding-top: .9rem; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th { font-size: 1rem; font-weight: 600; color: var(--secondary); text-align: right; padding: 0 0 .7rem .9rem; border-bottom: 1px solid var(--line); }
+td { font-size: 1.15rem; text-align: right; padding: .75rem 0 .75rem .9rem; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; padding-left: 0; }
+th:first-child { padding-left: 1.75rem; }
+/* Browsers ignore max-width on table cells, so the name's own span carries the cap. */
+.ns { display: inline-block; max-width: 11rem; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+.swatch { display: inline-block; width: 1.05rem; height: .3rem; border-radius: .15rem; margin-right: .7rem; vertical-align: middle; }
+.waiting { display: flex; justify-content: space-between; align-items: baseline; padding-top: .7rem; font-size: 1.05rem; color: var(--secondary); }
+.waiting .n { font-size: 1.3rem; color: var(--primary); font-variant-numeric: tabular-nums; }

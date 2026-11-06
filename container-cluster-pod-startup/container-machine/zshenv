@@ -1,0 +1,9 @@
+# /etc/zsh/zshenv in the sample-app container machine: read first by every zsh.
+# Go is in /usr/local/go; ~/go/bin is left out because it holds the Mac's binaries.
+export PATH=/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# The Mac's $HOME is mounted here, so ~/.zshrc is the Mac's: an interactive shell reads
+# this image's rc instead.
+if [[ -o interactive ]]; then
+  export ZDOTDIR=/etc/zsh/container-machine
+fi

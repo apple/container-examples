@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Pod startup time</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top">
+  <div class="title">
+    <svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--orange)"/><rect x="5.5" y="10" width="3" height="7" rx="1" fill="#fff"/><rect x="10.5" y="7" width="3" height="10" rx="1" fill="#fff"/><rect x="15.5" y="9" width="3" height="8" rx="1" fill="#fff"/></svg>
+    <span class="brand" id="brand" data-t></span><span class="sep" id="sep">/</span>
+    <h1 data-t>Pod startup time</h1>
+  </div>
+  <div class="controls">
+    <span class="updated" id="updated" data-t></span>
+    <div class="seg" id="ranges">
+      <button data-range="3m">3m</button><button data-range="15m">15m</button><button data-range="1h">1h</button>
+    </div>
+    <button class="live" id="live"><span class="spin"></span><span id="live-word">Live</span></button>
+  </div>
+</header>
+<main>
+  <section class="cards">
+    <div class="card">
+      <div class="label" data-t>Pods measured</div>
+      <div class="value"><span class="num" id="total" data-t></span></div>
+    </div>
+    <div class="card" id="card-own">
+      <div class="label" data-t></div>
+      <div class="value"><span class="num" data-t></span><span class="unit">s</span><span class="sub" data-t></span></div>
+    </div>
+    <div class="card" id="card-other">
+      <div class="label" data-t></div>
+      <div class="value"><span class="num" data-t></span><span class="unit">s</span><span class="sub" data-t></span></div>
+    </div>
+    <div class="card">
+      <div class="label" data-t>Database</div>
+      <div class="value"><span class="db-dot" id="db-dot"></span><span class="db" id="db" data-t></span></div>
+    </div>
+  </section>
+  <section class="panel">
+    <div class="label" id="chart-title" data-t></div>
+    <div class="panel-body">
+      <div class="chart" id="chart"></div>
+      <div class="side">
+        <table id="table"></table>
+        <div class="waiting"><span data-t>Waiting pods</span><span class="n" id="pending" data-t></span></div>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
