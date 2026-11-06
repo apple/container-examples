@@ -35,7 +35,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: docker.io/library/demo-web:latest
+          image: demo-web:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
