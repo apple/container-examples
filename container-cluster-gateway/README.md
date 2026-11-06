@@ -129,7 +129,7 @@ kubectl --context cluster-dev get pods --namespace traefik
 4. Look at the notes on the API server: open `http://api.gateway.test/api/notes` in the browser, or run:
 
    ```console
-   % curl -s http://api.gateway.test/api/notes | jq
+   curl -s http://api.gateway.test/api/notes | jq
    ```
 
 ## Clean up
@@ -137,11 +137,11 @@ kubectl --context cluster-dev get pods --namespace traefik
 Remove the gateway, the ingress rules and Traefik:
 
 ```console
-% ./scripts/remove-gateway.sh
+./scripts/remove-gateway.sh
 ```
 
 Stop and delete the cluster, including its worker nodes:
 
 ```console
-% container cluster delete --name cluster-dev
+container cluster delete --name cluster-dev
 ```
