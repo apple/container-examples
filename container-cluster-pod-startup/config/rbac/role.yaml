@@ -1,0 +1,15 @@
+# Hand-written to match the +kubebuilder:rbac marker in internal/controller;
+# internal/controller/rbac_gate_test.go fails when the two drift.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: sample-app
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
