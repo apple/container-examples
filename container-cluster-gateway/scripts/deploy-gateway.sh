@@ -65,12 +65,17 @@ if [[ -z "$NODE_IPS" ]]; then
 fi
 echo "==> Gateway upstream nodes: $(echo $NODE_IPS)"
 
-# The gateway has to be on the container network that the nodes are on. Find the network by the
-# address of a node, which does not depend on how the cluster tool names its nodes.
+# The gateway has to be on the container network that the nodes are on. Cluster nodes are not in the
+# output of "container list", so find the node by its address in "container cluster list", then read
+# its networks with "container inspect". This does not depend on how the cluster tool names its nodes.
 if [[ -z "$GATEWAY_NETWORK" ]]; then
   FIRST_NODE_IP="$(echo "$NODE_IPS" | head -n 1)"
-  GATEWAY_NETWORK="$(container inspect $(container list --quiet) |
-    jq -r --arg ip "$FIRST_NODE_IP" '[.[].status.networks[]? | select(.ipv4Address | startswith($ip + "/")) | .network][0] // empty')"
+  FIRST_NODE_NAME="$(container cluster list --format json |
+    jq -r --arg ip "$FIRST_NODE_IP" '[.[].status.nodes[]? | select((.addresses // []) | index($ip)) | .name][0] // empty')"
+  if [[ -n "$FIRST_NODE_NAME" ]]; then
+    GATEWAY_NETWORK="$(container inspect "$FIRST_NODE_NAME" |
+      jq -r --arg ip "$FIRST_NODE_IP" '[.[0].status.networks[]? | select(.ipv4Address | startswith($ip + "/")) | .network][0] // empty')"
+  fi
   if [[ -z "$GATEWAY_NETWORK" ]]; then
     echo "Could not find the container network of the node at $FIRST_NODE_IP. Set GATEWAY_NETWORK."
     exit 1
@@ -79,6 +84,8 @@ fi
 echo "==> Gateway network: $GATEWAY_NETWORK"
 
 # Install Traefik as the ingress controller, reachable on a NodePort of every node.
+# The chart's Service type is service.spec.type. Chart v40 and later ignore service.type (the Service
+# stays a LoadBalancer), and v42.3.1 and later reject it; only charts before v40 take it.
 TRAEFIK_VERSION=()
 if [[ -n "$TRAEFIK_CHART_VERSION" ]]; then
   TRAEFIK_VERSION=(--version "$TRAEFIK_CHART_VERSION")
@@ -86,7 +93,7 @@ fi
 run helm upgrade --install traefik traefik \
   --repo https://traefik.github.io/charts "${TRAEFIK_VERSION[@]}" \
   --kube-context "$CONTEXT" --namespace traefik --create-namespace \
-  --set service.type=NodePort \
+  --set service.spec.type=NodePort \
   --set ports.web.nodePort="$INGRESS_HTTP_PORT" \
   --set ports.websecure.nodePort="$INGRESS_HTTPS_PORT" \
   --set deployment.replicas=2 \

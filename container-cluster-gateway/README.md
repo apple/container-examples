@@ -62,13 +62,13 @@ This pulls the Kubernetes node image on first use, starts a control plane node a
 
 The `--shared-image-store` option allows the cluster to pull images from the local image store that `container` manages, without the need to push them to a registry or load them manually into cluster nodes.
 
-### 4. Apply the manifests
+### 3. Apply the manifests
 
 ```bash
 kubectl --context cluster-dev apply -f deployment
 ```
 
-### 5. Create the gateway
+### 4. Create the gateway
 
 ```bash
 ./scripts/deploy-gateway.sh
@@ -89,7 +89,11 @@ Use the `container` CLI to see the containers and network behind the cluster:
 # The cluster
 container cluster list
 
-# The control plane and worker node containers, and the gateway container
+# The control plane and worker nodes, with their addresses
+# (container list does not show cluster nodes)
+container cluster list --nodes
+
+# The gateway container
 container list
 
 # The network that the nodes and the gateway share
