@@ -10,7 +10,7 @@ Install and start before running the demo:
 
 - Apple `container` release 1.7.0 or later
 - [`kubectl`](https://kubernetes.io/docs/tasks/tools/)
-- The `test` DNS domain, configured as the default domain and registered with macOS, as described in [Set up DNS-based container names](../../docs/networking.md#set-up-dns-based-container-names)
+- The `test` DNS domain, configured as the default domain and registered with macOS, as described in [Set up DNS-based container names](https://github.com/apple/container/blob/main/docs/networking.md#set-up-dns-based-container-names)
 - [Helm](https://helm.sh/)
 
 ## Architecture
