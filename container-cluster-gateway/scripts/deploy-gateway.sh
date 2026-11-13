@@ -151,26 +151,35 @@ run container run -d --name "$GATEWAY" \
 
 GATEWAY_IP="$(container inspect "$GATEWAY" | jq -r '.[0].status.networks[0].ipv4Address' | cut -d/ -f1)"
 
-# Traefik can take a few seconds to pick up the routes, and until it does it answers 404.
+# Traefik can take a few seconds to pick up the routes, and until it does it answers 404. Each of its
+# replicas picks them up on its own, and the gateway spreads requests across the nodes, so wait until
+# both host names answer on a few checks in a row.
+http_status() {
+  curl -s -o /dev/null -w '%{http_code}' --max-time 2 -H "Host: $1" "http://${GATEWAY_IP}$2" || true
+}
 ATTEMPTS=30
-echo "==> Waiting for http://notepad.${GATEWAY_HOST} through the gateway at ${GATEWAY_IP}"
+NEEDED=3
+ready=0
+echo "==> Waiting for notepad.${GATEWAY_HOST} and api.${GATEWAY_HOST} through the gateway at ${GATEWAY_IP}"
 for attempt in $(seq 1 "$ATTEMPTS"); do
-  status="$(curl -s -o /dev/null -w '%{http_code}' --max-time 2 \
-    -H "Host: notepad.${GATEWAY_HOST}" "http://${GATEWAY_IP}/" || true)"
-  if [[ "$status" == 2* ]]; then
-    echo
-    echo "Run these commands from your terminal to access the web application and message API:"
-    echo
-    echo "  open http://notepad.${GATEWAY_HOST}"
-    echo "  curl -s http://api.${GATEWAY_HOST}/api/notes | jq"
-    exit 0
+  web_status="$(http_status "notepad.${GATEWAY_HOST}" /)"
+  api_status="$(http_status "api.${GATEWAY_HOST}" /api/notes)"
+  if [[ "$web_status" == 2* && "$api_status" == 2* ]]; then
+    ready=$((ready + 1))
+    if [[ "$ready" -ge "$NEEDED" ]]; then
+      echo
+      echo "Run these commands from your terminal to access the web application and message API:"
+      echo
+      echo "  open http://notepad.${GATEWAY_HOST}"
+      echo "  curl -s http://api.${GATEWAY_HOST}/api/notes | jq"
+      exit 0
+    fi
+  else
+    ready=0
+    echo "    not ready yet (notepad ${web_status/#000/no answer}, api ${api_status/#000/no answer}), attempt ${attempt} of ${ATTEMPTS}"
   fi
-  if [[ "$status" == "000" ]]; then
-    status="no answer"
-  fi
-  echo "    not ready yet (${status}), attempt ${attempt} of ${ATTEMPTS}"
   sleep 2
 done
-echo "The app did not answer through the gateway (last result: ${status})."
+echo "The app did not answer through the gateway (last results: notepad ${web_status}, api ${api_status})."
 echo "Check 'kubectl --context ${CONTEXT} get pods -A' and 'kubectl --context ${CONTEXT} get gateway,httproute'."
 exit 1
