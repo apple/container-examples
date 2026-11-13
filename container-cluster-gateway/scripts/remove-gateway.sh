@@ -14,7 +14,8 @@
 # limitations under the License.
 
 #
-# Removes what deploy-gateway.sh created: the gateway container, the ingress rules and Traefik.
+# Removes what deploy-gateway.sh created: the gateway container, the routes and Traefik.
+# The Gateway API CRDs stay installed; they go away when the cluster is deleted.
 #
 # Usage: remove-gateway.sh [--context <kube-context>]
 set -e
@@ -39,5 +40,6 @@ run container stop "$GATEWAY" 2>/dev/null || true
 run container delete "$GATEWAY" 2>/dev/null || true
 run rm -rf "$EXAMPLE_ROOT/.gateway/$GATEWAY"
 
-run kubectl --context "$CONTEXT" delete ingress notepad notepad-api --ignore-not-found
+run kubectl --context "$CONTEXT" delete httproute notepad notepad-api --ignore-not-found
+run kubectl --context "$CONTEXT" delete gateway notepad --ignore-not-found
 run helm uninstall traefik --kube-context "$CONTEXT" --namespace traefik 2>/dev/null || true
