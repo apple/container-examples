@@ -16,11 +16,12 @@
 #
 # Puts a gateway in front of a local Kubernetes cluster, and routes to the app by host name.
 #
-#   browser -> gateway container -> NodePort on the worker nodes -> Traefik -> Ingress -> Service
+#   browser -> gateway container -> NodePort on the worker nodes -> Traefik -> HTTPRoute -> Service
 #
 # The gateway is an nginx container on the cluster's container network. Its network alias
 # ".gateway" makes every name below gateway.test resolve to it, so notepad.gateway.test and
 # api.gateway.test both go to the gateway, and Traefik picks the Service from the Host header.
+# Traefik implements the Kubernetes Gateway API here: the routes are a Gateway and HTTPRoutes.
 #
 # Works for clusters made with "container cluster create". Run it after deploy.sh.
 #
@@ -28,6 +29,7 @@
 #
 # Environment:
 #   GATEWAY_NETWORK        container network of the cluster nodes (default: found from a worker node)
+#   GATEWAY_API_VERSION    Gateway API release whose standard CRDs to install (default: v1.7.0)
 #   TRAEFIK_CHART_VERSION  Traefik chart version to install (default: the latest)
 set -e
 
@@ -38,6 +40,7 @@ GATEWAY="gateway"
 GATEWAY_HOST="gateway.test"
 INGRESS_HTTP_PORT=31080
 INGRESS_HTTPS_PORT=31443
+GATEWAY_API_VERSION="${GATEWAY_API_VERSION:-v1.7.0}"
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -83,7 +86,14 @@ if [[ -z "$GATEWAY_NETWORK" ]]; then
 fi
 echo "==> Gateway network: $GATEWAY_NETWORK"
 
-# Install Traefik as the ingress controller, reachable on a NodePort of every node.
+# Install the Gateway API's standard CRDs. Kubernetes does not include them, and the Traefik chart does
+# not install them.
+run "${KUBECTL[@]}" apply --server-side \
+  -f "https://github.com/kubernetes-sigs/gateway-api/releases/download/${GATEWAY_API_VERSION}/standard-install.yaml"
+
+# Install Traefik as the Gateway API implementation, reachable on a NodePort of every node. The chart
+# creates the "traefik" GatewayClass; the Gateway itself is in gateway-api/routes.yaml, so the chart's
+# default Gateway is turned off.
 # The chart's Service type is service.spec.type. Chart v40 and later ignore service.type (the Service
 # stays a LoadBalancer), and v42.3.1 and later reject it; only charts before v40 take it.
 TRAEFIK_VERSION=()
@@ -97,10 +107,14 @@ run helm upgrade --install traefik traefik \
   --set ports.web.nodePort="$INGRESS_HTTP_PORT" \
   --set ports.websecure.nodePort="$INGRESS_HTTPS_PORT" \
   --set deployment.replicas=2 \
+  --set providers.kubernetesGateway.enabled=true \
+  --set providers.kubernetesIngress.enabled=false \
+  --set ingressClass.enabled=false \
+  --set gateway.enabled=false \
   --wait
 
 # Route notepad.<gateway> and api.<gateway> to the app's Services.
-run "${KUBECTL[@]}" apply -f "$EXAMPLE_ROOT/ingress/ingress.yaml"
+run "${KUBECTL[@]}" apply -f "$EXAMPLE_ROOT/gateway-api/routes.yaml"
 
 # Generate the gateway's nginx configuration. It balances across the nodes' ingress NodePort.
 CONF_DIR="$EXAMPLE_ROOT/.gateway/$GATEWAY"
@@ -137,26 +151,35 @@ run container run -d --name "$GATEWAY" \
 
 GATEWAY_IP="$(container inspect "$GATEWAY" | jq -r '.[0].status.networks[0].ipv4Address' | cut -d/ -f1)"
 
-# Traefik can take a few seconds to pick up the Ingress rules, and until it does it answers 404.
+# Traefik can take a few seconds to pick up the routes, and until it does it answers 404. Each of its
+# replicas picks them up on its own, and the gateway spreads requests across the nodes, so wait until
+# both host names answer on a few checks in a row.
+http_status() {
+  curl -s -o /dev/null -w '%{http_code}' --max-time 2 -H "Host: $1" "http://${GATEWAY_IP}$2" || true
+}
 ATTEMPTS=30
-echo "==> Waiting for http://notepad.${GATEWAY_HOST} through the gateway at ${GATEWAY_IP}"
+NEEDED=3
+ready=0
+echo "==> Waiting for notepad.${GATEWAY_HOST} and api.${GATEWAY_HOST} through the gateway at ${GATEWAY_IP}"
 for attempt in $(seq 1 "$ATTEMPTS"); do
-  status="$(curl -s -o /dev/null -w '%{http_code}' --max-time 2 \
-    -H "Host: notepad.${GATEWAY_HOST}" "http://${GATEWAY_IP}/" || true)"
-  if [[ "$status" == 2* ]]; then
-    echo
-    echo "Run these commands from your terminal to access the web application and message API:"
-    echo
-    echo "  open http://notepad.${GATEWAY_HOST}"
-    echo "  curl -s http://api.${GATEWAY_HOST}/api/notes | jq"
-    exit 0
+  web_status="$(http_status "notepad.${GATEWAY_HOST}" /)"
+  api_status="$(http_status "api.${GATEWAY_HOST}" /api/notes)"
+  if [[ "$web_status" == 2* && "$api_status" == 2* ]]; then
+    ready=$((ready + 1))
+    if [[ "$ready" -ge "$NEEDED" ]]; then
+      echo
+      echo "Run these commands from your terminal to access the web application and message API:"
+      echo
+      echo "  open http://notepad.${GATEWAY_HOST}"
+      echo "  curl -s http://api.${GATEWAY_HOST}/api/notes | jq"
+      exit 0
+    fi
+  else
+    ready=0
+    echo "    not ready yet (notepad ${web_status/#000/no answer}, api ${api_status/#000/no answer}), attempt ${attempt} of ${ATTEMPTS}"
   fi
-  if [[ "$status" == "000" ]]; then
-    status="no answer"
-  fi
-  echo "    not ready yet (${status}), attempt ${attempt} of ${ATTEMPTS}"
   sleep 2
 done
-echo "The app did not answer through the gateway (last result: ${status})."
-echo "Check 'kubectl --context ${CONTEXT} get pods -A' and 'kubectl --context ${CONTEXT} get ingress'."
+echo "The app did not answer through the gateway (last results: notepad ${web_status}, api ${api_status})."
+echo "Check 'kubectl --context ${CONTEXT} get pods -A' and 'kubectl --context ${CONTEXT} get gateway,httproute'."
 exit 1

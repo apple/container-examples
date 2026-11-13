@@ -1,0 +1,43 @@
+# Routes requests that reach Traefik on its web entrypoint by host name, with the Gateway API.
+#
+# The GatewayClass "traefik" comes from the Traefik chart. A Gateway listener's port has to match one of
+# Traefik's entrypoints, and 8000 is the "web" entrypoint, which the chart exposes on NodePort 31080.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: notepad
+spec:
+  gatewayClassName: traefik
+  listeners:
+    - name: web
+      protocol: HTTP
+      port: 8000
+      hostname: "*.gateway.test"
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: notepad
+spec:
+  parentRefs:
+    - name: notepad
+  hostnames:
+    - notepad.gateway.test
+  rules:
+    - backendRefs:
+        - name: web
+          port: 80
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: notepad-api
+spec:
+  parentRefs:
+    - name: notepad
+  hostnames:
+    - api.gateway.test
+  rules:
+    - backendRefs:
+        - name: api
+          port: 5000
