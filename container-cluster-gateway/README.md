@@ -25,10 +25,10 @@ Install and start before running the demo:
   └────┬───────────────────────────┘
        │  NodePort 31080 on the worker nodes
   ┌────┴───────────────────────────┐
-  │  Traefik    ingress controller │   routes by Host header
+  │  Traefik    Gateway API        │   routes by Host header
   └────┬───────────────────────────┘
        │
-   Ingress rules ──► web, api Services
+   HTTPRoutes ──► web, api Services
                       │
                       └─► api ──► valkey
 ```
@@ -39,7 +39,7 @@ A cluster's nodes share one container network, and the pods reach each other thr
 % container run -d --name gateway --network <nodes-network>,alias=.gateway ...
 ```
 
-The alias makes every name below `gateway.test` resolve to the gateway, so `notepad.gateway.test` and `api.gateway.test` both reach it. The gateway forwards requests to Traefik on the worker nodes, and the Ingress rules in `ingress/ingress.yaml` use the `Host` header to choose between the `web` and `api` Services. Adding another name takes only another Ingress rule, with no change to DNS.
+The alias makes every name below `gateway.test` resolve to the gateway, so `notepad.gateway.test` and `api.gateway.test` both reach it. The gateway forwards requests to Traefik on the worker nodes. Traefik implements the Kubernetes [Gateway API](https://gateway-api.sigs.k8s.io/): in `gateway-api/routes.yaml`, a Gateway listens for names below `gateway.test`, and HTTPRoutes use the `Host` header to choose between the `web` and `api` Services. Adding another name takes only another HTTPRoute, with no change to DNS.
 
 ## Set up
 
@@ -74,11 +74,12 @@ kubectl --context cluster-dev apply -f deployment
 ./scripts/deploy-gateway.sh
 ```
 
-The script installs Traefik as the ingress controller, applies the Ingress rules, finds the container network of the worker nodes, writes the gateway's nginx configuration under `.gateway/`, and starts the `gateway` container. When it finishes, it prints the app's address.
+The script installs the Gateway API CRDs and Traefik, applies the Gateway and HTTPRoutes, finds the container network of the worker nodes, writes the gateway's nginx configuration under `.gateway/`, and starts the `gateway` container. When it finishes, it prints the app's address.
 
-The script reads two environment variables when its defaults are wrong:
+The script reads three environment variables when its defaults are wrong:
 
 - `GATEWAY_NETWORK` is the container network that the cluster nodes are on. The default is found from the address of a worker node.
+- `GATEWAY_API_VERSION` is the Gateway API release whose standard CRDs are installed. The default is `v1.7.0`.
 - `TRAEFIK_CHART_VERSION` pins the Traefik Helm chart. The default is the latest.
 
 ## Examine what was deployed
@@ -118,10 +119,10 @@ kubectl --context cluster-dev get pods -o wide
 # The Services that connect web, api and valkey
 kubectl --context cluster-dev get services
 
-# The Ingress rules that route notepad.gateway.test and api.gateway.test
-kubectl --context cluster-dev get ingress
+# The Gateway and the HTTPRoutes that route notepad.gateway.test and api.gateway.test
+kubectl --context cluster-dev get gateway,httproute
 
-# The Traefik ingress controller
+# Traefik, which implements the Gateway API
 kubectl --context cluster-dev get pods --namespace traefik
 ```
 
@@ -138,7 +139,7 @@ kubectl --context cluster-dev get pods --namespace traefik
 
 ## Clean up
 
-Remove the gateway, the ingress rules and Traefik:
+Remove the gateway, the routes and Traefik:
 
 ```console
 ./scripts/remove-gateway.sh
