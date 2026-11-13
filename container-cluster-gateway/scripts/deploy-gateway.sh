@@ -137,13 +137,16 @@ run container run -d --name "$GATEWAY" \
 
 GATEWAY_IP="$(container inspect "$GATEWAY" | jq -r '.[0].status.networks[0].ipv4Address' | cut -d/ -f1)"
 
-# Traefik can take a few seconds to pick up the Ingress rules, and until it does it answers 404.
+# Traefik can take a few seconds to pick up each Ingress rule, and until it does it answers 404 for
+# that host. The web and API rules can appear at different times, so wait for both.
 ATTEMPTS=30
-echo "==> Waiting for http://notepad.${GATEWAY_HOST} through the gateway at ${GATEWAY_IP}"
+echo "==> Waiting for http://notepad.${GATEWAY_HOST} and http://api.${GATEWAY_HOST} through the gateway at ${GATEWAY_IP}"
 for attempt in $(seq 1 "$ATTEMPTS"); do
-  status="$(curl -s -o /dev/null -w '%{http_code}' --max-time 2 \
+  web_status="$(curl -s -o /dev/null -w '%{http_code}' --max-time 2 \
     -H "Host: notepad.${GATEWAY_HOST}" "http://${GATEWAY_IP}/" || true)"
-  if [[ "$status" == 2* ]]; then
+  api_status="$(curl -s -o /dev/null -w '%{http_code}' --max-time 2 \
+    -H "Host: api.${GATEWAY_HOST}" "http://${GATEWAY_IP}/api/notes" || true)"
+  if [[ "$web_status" == 2* && "$api_status" == 2* ]]; then
     echo
     echo "Run these commands from your terminal to access the web application and message API:"
     echo
@@ -151,12 +154,15 @@ for attempt in $(seq 1 "$ATTEMPTS"); do
     echo "  curl -s http://api.${GATEWAY_HOST}/api/notes | jq"
     exit 0
   fi
-  if [[ "$status" == "000" ]]; then
-    status="no answer"
+  if [[ "$web_status" == "000" ]]; then
+    web_status="no answer"
   fi
-  echo "    not ready yet (${status}), attempt ${attempt} of ${ATTEMPTS}"
+  if [[ "$api_status" == "000" ]]; then
+    api_status="no answer"
+  fi
+  echo "    not ready yet (web: ${web_status}, api: ${api_status}), attempt ${attempt} of ${ATTEMPTS}"
   sleep 2
 done
-echo "The app did not answer through the gateway (last result: ${status})."
+echo "The app did not answer through the gateway (last result: web ${web_status}, api ${api_status})."
 echo "Check 'kubectl --context ${CONTEXT} get pods -A' and 'kubectl --context ${CONTEXT} get ingress'."
 exit 1
